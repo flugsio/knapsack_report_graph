@@ -1,0 +1,12 @@
+# automatic refresh thingy
+# feh out/out.png
+# gnuplot plot.in; xdotool search --class feh type --window %1 r
+
+set key noenhanced outside
+set xdata time
+set timefmt '%Y-%m-%d'
+set style data linespoints
+set term png size 3000,2000
+set output "out/out.png"
+#set term dumb 330,100 ansi
+plot for [IDX=0:`echo $((${FILECOUNT:-1000}-1))`] "`echo $OUTFILE`" i IDX using 1:2 title columnheader(1)

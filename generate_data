@@ -1,0 +1,46 @@
+#!/bin/bash -e
+# run this in a git directory
+
+declare -a DATES
+
+GITDIR=$1
+TMPDIR=$(mktemp --directory)
+MINTIME=20
+export OUTFILE=./out/data.dat
+rm $OUTFILE
+
+function extract_file {
+  dir=$PWD
+  cd $GITDIR
+  while read h; do
+    local commit_date=`git show $h | head -3 | grep 'Date:' | awk '{print $2}'`
+    DATES+=("$commit_date")
+    git cat-file -p ${h}:knapsack_rspec_report.json > $TMPDIR/knapsack_rspec_report_${commit_date}.json
+  done <<< $(git rev-list --all -- knapsack_rspec_report.json)
+  cd $dir
+}
+
+function compile {
+  keys=$(jq ". as \$object | keys[] | select(\$object[.] >= $MINTIME)" $TMPDIR/knapsack_rspec_report* | sort | uniq)
+  readarray -t SORTED < <(for a in "${DATES[@]}"; do echo "$a"; done | sort | uniq)
+
+  for key in $keys; do
+    echo >> $OUTFILE
+    echo >> $OUTFILE
+    echo $key >> $OUTFILE
+
+    for date in "${SORTED[@]}"; do
+      if [ "$date" = "2018-02-02" ]; then continue; fi
+      if [ "$date" = "2018-03-13" ]; then continue; fi
+      echo $date, $(jq ".[$key]" $TMPDIR/knapsack_rspec_report_${date}.json | sed 's/null/0.0/') >> $OUTFILE
+    done
+  done
+  export FILECOUNT=$(echo "$keys" | wc -l)
+}
+
+
+extract_file
+compile
+gnuplot plot.in
+rm -rf $TMPDIR
+
